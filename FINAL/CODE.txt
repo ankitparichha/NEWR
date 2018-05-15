@@ -1,0 +1,301 @@
+repeat{
+  library(rJava)
+  library(xlsxjars)
+  library(xlsx)
+  #install.packages('ggplot2')
+  #install.packages('ggthemes')
+  library(caTools)
+  
+  mydata=read.xlsx(file = "C:/Users/IPN1KOR/Desktop/FCarDataV2.xlsx", sheetIndex = 1)
+  parts=read.xlsx(file= "C:/Users/IPN1KOR/Desktop/Parts.xlsx", sheetIndex = 1)
+  variables= read.xlsx(file="C:/Users/IPN1KOR/Desktop/Variables.xlsx", sheetIndex = 1)
+  
+  make=readline(prompt = "Enter the name of Car manufacturer :")
+  allmodel <- parts[parts$Company==make, ]
+  allmodel= allmodel[ ,c('Company','MODEL')]
+  
+  if(nrow(allmodel)!=0){
+    cat("The following are the number of models for",make,":\n")
+    print(allmodel)}else{
+      stop("Enter correct Input ")
+    }
+  
+  
+  print("Please select one model from above list.")
+  car= readline(prompt="Enter Model Name :")
+  
+  data <- mydata[mydata$MODEL==car, ]
+  #Fetching Particular car parts
+  parts <- parts[parts$MODEL==car, ]
+  
+  if((nrow(data)==0 && nrow(parts)==0)|| nrow(allmodel[allmodel$MODEL==car, ])==0)
+  {
+    stop("Please Enter Correct Credentials")
+  }else
+  {
+    mymodel<-NULL
+    print("Car Found")
+    
+    data<- data[ ,c('Month.Code','Total','GDP','Unemployment','Petrol.price','Diesel.Price')]
+    
+    set.seed(2)
+    id=sample(2,nrow(data),prob = c(0.7,0.3),replace=TRUE)
+    training_data=data[id==1,]
+    testing_data=data[id==2,]
+    library(rpart)
+    
+    #install.packages('randomForest')
+    cat("Press 1 for Predicting Total Sale using Linear Regression Model\n")
+    cat("Press 2 for Predicting Total Sale using Random Forest Model\n")
+    cat("Press 3 for Data Visualization\n")
+    
+    
+    model1=randomForest(Total~.,data = training_data)
+    model2=lm(Total~.,data = training_data)
+    model3=glm(Total~.,data = training_data)
+    ch<-readline(prompt = "Enter your choice: ")
+    #Random Forest
+    switch(ch,
+           "1"={ 
+             
+             cat("\n\n")
+             cat("*******************************************\n")  
+             cat("Inside Linear Model\n")
+             
+             #model2=lm(mydata$Total~ mydata$GDP+mydata$Unemployment+mydata$Petrol.price+ mydata$Diesel.Price, data = training_data)
+             
+             predic2=predict(model2,testing_data)
+             mymodel<- model2
+             library(ggplot2)  
+             plot(testing_data$Total,type = "l",lty=1.8,col="green")
+             lines(predic2,type = "l",col="blue")
+             cat("RMSE")
+             
+             difference=predic2-testing_data$Total
+             rm<- sqrt(mean(difference ^2))
+             cat("The root mean square error is : ",round(rm),"\n")
+             
+             
+             mean=floor(mean(training_data$Total))
+             mean
+             errorpercent = 20
+             errorrate = (errorpercent/100)*mean
+             #print(errorrate)
+             y = array(c(1:24))
+             z = array(c(1:24))
+             pre=predict(model2,data)
+             count=0
+             for(i in 1:24)
+             {
+               y[i]=abs(data$Total[i]-pre[i])
+               #print(y[i])
+               if(y[i]<=errorrate)
+               {z[i]=1
+               count= count+1}
+               else {
+                 z[i]=0
+               }
+             }
+             
+             accuracy= (count/24)*100
+             cat("The accuracy is ",accuracy,"%")
+             
+           },
+           "2"={
+             cat("\n\n")
+             library(randomForest)
+             #Random Forest Model
+             cat("*******************************************\n")        
+             cat("Inside Random Forest\n")
+             #bestmtry <- tuneRF(training_data,training_data$Total,stepFactor = 1.5,improve=0.02,trace = T,plot=T)
+             
+             
+             predic1=predict(model1,testing_data)
+             predic1
+             mymodel<- model1
+             #library(ggplot2)
+             plot(testing_data$Total,type = "l",lty=1.8,col="green")
+             lines(predic1,type = "l",col="blue")
+             cat(" RMSE ")
+             difference=predic1-testing_data$Total
+             difference
+             rm<- sqrt(mean(difference^2))
+             
+             cat("The root mean square error is : ",round(rm),"\n")
+             
+             
+             mean=floor(mean(training_data$Total))
+             mean
+             errorpercent = 20
+             errorrate = (errorpercent/100)*mean
+             #print(errorrate)
+             y = array(c(1:24))
+             z = array(c(1:24))
+             predic1
+             model1
+             data
+             
+             variables
+             pre=predict(model1,data)
+             pre
+             count=0
+             for(i in 1:24)
+             {
+               y[i]=abs(data$Total[i]-pre[i])
+               #print(y[i])
+               if(y[i]<=errorrate)
+               {z[i]=1
+               count= count+1}
+               else {
+                 z[i]=0
+               }
+             }
+             
+             accuracy= (count/24)*100
+             cat("The accuracy is ",accuracy,"%")
+             
+             
+             
+             
+           },
+           "3"={
+             cat("\n\n")
+             cat("*******************************************************\n")
+             cat("Displaying The Data\n")
+             cat("Past two Year Monthly Sale of the Car\n")
+             #install.packages('ggthemes')
+             library(ggthemes)
+             library(ggplot2)
+             print("Total Sale vs GDP")
+             pl<- ggplot(data,aes(x=data$GDP,y = data$Total))
+             pl2<- pl+geom_point(color="blue",size=3,shape=18)
+             pl3<- pl2+ggtitle(car)
+             pl4<- pl3+theme_set(theme_grey())+labs(x="GDP",y="Total Sales")
+             print(pl4)
+             cat("Total Sale vs Petrol Rate\n")
+             pl<- ggplot(data,aes(x=data$Petrol.price,y = data$Total))
+             pl2<- pl+geom_line(color="#32ba4b",size=0)
+             pl3<- pl2+ggtitle(car)
+             pl4<- pl3+theme_set(theme_classic())+labs(x="Petrol Price",y="Total Sales")
+             
+             print(pl4)
+             cat("Total Sale vs Diesel Rate\n")
+             pl<- ggplot(data,aes(x=data$Diesel.Price,y = data$Total))
+             pl2<- pl+geom_line(color="#8c6666",size=0)
+             pl3<- pl2+ggtitle(car)
+             pl4<- pl3+theme_set(theme_gray())+labs(x="Diesel Price",y="Total Sales")
+             print(pl4)
+             
+             pl<- ggplot(data,aes(x=data$Month.Code,y=data$Total))
+             pl2<- pl+geom_bar(stat="identity",fill = "#32ba4b")+theme_set(theme_dark())+ggtitle(car);
+             pl3<- pl2+labs(x="Months",y="Total Sale")
+             print(pl3)
+             
+             stop("Thank You")
+             
+             
+             
+             
+           },
+           {
+             stop("Please Enter your Correct Choice")
+           }
+    )  
+   
+    
+   
+    variables1 = variables[variables$Month.Code==25, ]
+    variables2 = variables[variables$Month.Code==26, ]
+    variables3 = variables[variables$Month.Code==27, ]
+    variables4 = variables[variables$Month.Code==28, ]
+    variables5 = variables[variables$Month.Code==29, ]
+    variables6 = variables[variables$Month.Code==30, ]
+    variables7 = variables[variables$Month.Code==31, ]
+    variables8 = variables[variables$Month.Code==32, ]
+    variables9 = variables[variables$Month.Code==33, ]
+    
+    
+    
+    p1= predict(mymodel,variables1)
+    p2= predict(mymodel,variables2)
+    p3= predict(mymodel,variables3)
+    p4= predict(mymodel,variables4)
+    p5= predict(mymodel,variables5)
+    p6= predict(mymodel,variables6)
+    p7= predict(mymodel,variables7)
+    p8= predict(mymodel,variables8)
+    p9= predict(mymodel,variables9)
+    
+    predd=array(c(1:9))
+    
+    predd[1]=p1
+    predd[2]=p2
+    predd[3]=p3
+    predd[4]=p4
+    predd[5]=p5
+    predd[6]=p6
+    predd[7]=p7
+    predd[8]=p8
+    predd[9]=p9
+    
+    
+    cat("\n\nThe Predicted Value for 9 months are : \n\n")
+    
+    i=0
+    for(i in 1:9)
+    {
+      
+      cat("  ",floor(predd[i]),"\n")
+    }
+    
+    p=predd[1]
+    p<-abs(p)
+    
+    cat("\n\n")
+    
+    cat("For",floor(p), car, "The requirement is as follows:")
+    parts
+    #cat(car, "requires ", parts$Diesel.System,parts$Breaking.System,parts$Auto.Electricals,parts$Batteries,parts$Automotive.Belt,parts$Horns,parts$Filters,parts$Gasoline.Systems,parts$Auxiliary.Lamps,parts$Automotive.Bulbs,parts$Spark.Plugs,parts$Wiper.Blades,parts$Lightning.Coils,parts$Charging.Coils,parts$Ignition.Coils)
+    cat("\n")
+    cat("\n\n",car,"requires :\n\n")
+    x = array(c(1:15))
+    
+    x[1]=parts$Diesel.System
+    x[2]=parts$Breaking.System
+    x[3]=parts$Auto.Electricals
+    x[4]=parts$Batteries
+    x[5]=parts$Automotive.Belt
+    x[6]=parts$Horns
+    x[7]=parts$Filters
+    x[8]=parts$Gasoline.Systems
+    x[9]=parts$Auxiliary.Lamps
+    x[10]=parts$Automotive.Bulbs
+    x[11]=parts$Spark.Plugs
+    x[12]=parts$Wiper.Blades
+    x[13]=parts$Lightning.Coils
+    x[14]=parts$Charging.Coils
+    x[15]=parts$Ignition.Coils
+    
+    i=0
+    for(i in 3:17)
+    {
+      str=colnames(parts)[i]
+      cat("  ",str,"=",x[i-2],"\n")
+    }
+    i=0
+    cat("\n\n The following parts are to be manufectured by BOSCH (in numbers):\n\n")
+    for(i in 3:17)
+    {
+      str=colnames(parts)[i]
+      cat("  ",str,"=",x[i-2]*floor(p),"\n")
+    }
+  }
+  cat("\n")
+  ch=readline(prompt = "Do you want to enter again(Y/N):")
+  
+  if(ch=='N'||ch=='n'){
+    break
+  }
+}
+
+
